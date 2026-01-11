@@ -1,0 +1,190 @@
+version: "3.8"
+
+# =============================================================================
+# CHAOS AI MINECRAFT SERVER - Docker Compose
+# =============================================================================
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose down           # Stop all services
+#   docker compose logs -f        # View logs
+#   docker compose restart        # Restart all services
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # MINECRAFT SERVER (Fabric)
+  # ===========================================================================
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft-chaos
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"      # Minecraft Java
+      - "19132:19132/udp"  # Bedrock (via Geyser)
+      - "25575:25575"      # RCON
+      - "8100:8100"        # BlueMap
+    environment:
+      # Server Type
+      EULA: "TRUE"
+      TYPE: "FABRIC"
+      VERSION: ${MINECRAFT_VERSION:-1.21.1}
+      
+      # Performance (adjust MEMORY in .env based on your server)
+      MEMORY: ${MEMORY:-6G}
+      JVM_XX_OPTS: >-
+        -XX:+UseG1GC
+        -XX:+ParallelRefProcEnabled
+        -XX:MaxGCPauseMillis=200
+        -XX:+UnlockExperimentalVMOptions
+        -XX:+DisableExplicitGC
+        -XX:G1NewSizePercent=30
+        -XX:G1MaxNewSizePercent=40
+        -XX:G1HeapRegionSize=8M
+        -XX:G1ReservePercent=20
+        -XX:G1MixedGCCountTarget=4
+        -XX:InitiatingHeapOccupancyPercent=15
+        -XX:G1MixedGCLiveThresholdPercent=90
+        -XX:G1RSetUpdatingPauseTimePercent=5
+        -XX:SurvivorRatio=32
+        -XX:+PerfDisableSharedMem
+        -XX:MaxTenuringThreshold=1
+      
+      # Server Identity
+      SERVER_NAME: ${SERVER_NAME:-ChaosAI}
+      MOTD: ${MOTD:-§c§lCHAOS AI SERVER §r§7- §6Where AIs Come to Play}
+      DIFFICULTY: ${DIFFICULTY:-hard}
+      MODE: survival
+      HARDCORE: "false"
+      PVP: "true"
+      MAX_PLAYERS: ${MAX_PLAYERS:-20}
+      
+      # World Settings
+      VIEW_DISTANCE: ${VIEW_DISTANCE:-16}
+      SIMULATION_DISTANCE: 10
+      SPAWN_PROTECTION: 0
+      ALLOW_FLIGHT: "true"
+      
+      # Security
+      ONLINE_MODE: "TRUE"
+      ENABLE_WHITELIST: "TRUE"
+      ENFORCE_WHITELIST: "TRUE"
+      
+      # RCON for AI control
+      ENABLE_RCON: "TRUE"
+      RCON_PASSWORD: ${RCON_PASSWORD}
+      RCON_PORT: 25575
+      
+      # Mod support
+      MODRINTH_DOWNLOAD_DEPENDENCIES: "required"
+      
+    volumes:
+      - minecraft-data:/data
+      - ./mods:/mods:ro
+      - ./config:/config:ro
+    networks:
+      - chaos-net
+    healthcheck:
+      test: mc-health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    depends_on:
+      - redis
+
+  # ===========================================================================
+  # REDIS - State management and event queuing
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: chaos-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - chaos-net
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # AI CONTROLLER - FastAPI orchestration service
+  # ===========================================================================
+  ai-controller:
+    build:
+      context: ../ai-controller
+      dockerfile: Dockerfile
+    container_name: chaos-ai-controller
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - RCON_HOST=minecraft
+      - RCON_PORT=25575
+      - RCON_PASSWORD=${RCON_PASSWORD}
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - XAI_API_KEY=${XAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ENABLE_CHAOS_EVENTS=${ENABLE_CHAOS_EVENTS:-true}
+      - ENABLE_AI_DEBATES=${ENABLE_AI_DEBATES:-true}
+      - ENABLE_QUESTS=${ENABLE_QUESTS:-true}
+    volumes:
+      - ../ai-controller:/app
+    depends_on:
+      minecraft:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chaos-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # DISCORD BOT (Optional)
+  # ===========================================================================
+  discord-bot:
+    build:
+      context: ../discord-bot
+      dockerfile: Dockerfile
+    container_name: chaos-discord-bot
+    restart: unless-stopped
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - STATUS_CHANNEL_ID=${STATUS_CHANNEL_ID}
+      - CHAOS_API_URL=http://ai-controller:3000
+    depends_on:
+      - ai-controller
+    networks:
+      - chaos-net
+    profiles:
+      - discord  # Only starts with: docker compose --profile discord up
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  chaos-net:
+    driver: bridge
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  minecraft-data:
+    name: chaos-minecraft-data
+  redis-data:
+    name: chaos-redis-data

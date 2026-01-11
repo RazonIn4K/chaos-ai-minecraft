@@ -1,0 +1,249 @@
+{
+  "name": "Chaos AI Minecraft - Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 3 }]
+        }
+      },
+      "name": "Chaos Timer (3h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 100],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://YOUR_SERVER_IP:3000/chaos/trigger",
+        "options": {}
+      },
+      "name": "Trigger Chaos Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 100],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "embeds",
+              "value": "=[{\"title\":\"⚡ CHAOS EVENT\",\"description\":\"{{ $json.event }} triggered!\",\"color\":16711680,\"timestamp\":\"{{ new Date().toISOString() }}\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Discord Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 100],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 15 }]
+        }
+      },
+      "name": "Health Check (15m)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_SERVER_IP:3000/health",
+        "options": {}
+      },
+      "name": "Check Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 300],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "health-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "healthy",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Is Unhealthy?",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 300],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "🚨 **SERVER ALERT:** Minecraft server is experiencing issues!\nRCON: {{ $json.rcon }}\nRedis: {{ $json.redis }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Alert Discord",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [950, 250],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "name": "AI Debate Timer (6h)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 500],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "jsCode": "const topics = [\n  'Is the Nether safer than the End?',\n  'Diamonds or Netherite - which is better?',\n  'Best strategy to beat the Ender Dragon?',\n  'Best base location: underground, surface, or sky?',\n  'Creepers: misunderstood creatures or pure evil?',\n  'Should we trust the Piglins?',\n  'Best enchantment: Mending or Unbreaking III?',\n  'Are Iron Golems overrated defenders?',\n  'Elytra vs Horse - best transportation?',\n  'Is using beds in the Nether cheating?'\n];\n\nconst topic = topics[Math.floor(Math.random() * topics.length)];\n\nreturn [{ json: { topic } }];"
+      },
+      "name": "Pick Random Topic",
+      "type": "n8n-nodes-base.code",
+      "position": [500, 500],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://YOUR_SERVER_IP:3000/ai/debate?topic={{ encodeURIComponent($json.topic) }}",
+        "options": {}
+      },
+      "name": "Start AI Debate",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 500],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "embeds",
+              "value": "=[{\"title\":\"🎭 AI DEBATE\",\"description\":\"**Topic:** {{ $node['Pick Random Topic'].json.topic }}\",\"fields\":[{\"name\":\"🔮 Oracle (Claude)\",\"value\":\"{{ $json.oracle?.substring(0,200) || 'No response' }}\"},{\"name\":\"🎭 Trickster (Grok)\",\"value\":\"{{ $json.trickster?.substring(0,200) || 'No response' }}\"},{\"name\":\"🏗️ Architect (GPT)\",\"value\":\"{{ $json.architect?.substring(0,200) || 'No response' }}\"},{\"name\":\"⚔️ Warden (Gemini)\",\"value\":\"{{ $json.warden?.substring(0,200) || 'No response' }}\"}],\"color\":9442302}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post Debate Results",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1000, 500],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 9 * * *" }]
+        }
+      },
+      "name": "Daily Report (9 AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 700],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "url": "http://YOUR_SERVER_IP:3000/players",
+        "options": {}
+      },
+      "name": "Get Players",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 700],
+      "typeVersion": 4.1
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "embeds",
+              "value": "=[{\"title\":\"📊 Daily Server Report\",\"description\":\"Good morning! Here's your server status.\",\"fields\":[{\"name\":\"Status\",\"value\":\"🟢 Online\",\"inline\":true},{\"name\":\"Players Online\",\"value\":\"{{ $json.count || 0 }}\",\"inline\":true}],\"color\":3066993,\"timestamp\":\"{{ new Date().toISOString() }}\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post Daily Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [750, 700],
+      "typeVersion": 4.1
+    }
+  ],
+  "connections": {
+    "Chaos Timer (3h)": {
+      "main": [[{ "node": "Trigger Chaos Event", "type": "main", "index": 0 }]]
+    },
+    "Trigger Chaos Event": {
+      "main": [[{ "node": "Discord Notification", "type": "main", "index": 0 }]]
+    },
+    "Health Check (15m)": {
+      "main": [[{ "node": "Check Health", "type": "main", "index": 0 }]]
+    },
+    "Check Health": {
+      "main": [[{ "node": "Is Unhealthy?", "type": "main", "index": 0 }]]
+    },
+    "Is Unhealthy?": {
+      "main": [
+        [{ "node": "Alert Discord", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "AI Debate Timer (6h)": {
+      "main": [[{ "node": "Pick Random Topic", "type": "main", "index": 0 }]]
+    },
+    "Pick Random Topic": {
+      "main": [[{ "node": "Start AI Debate", "type": "main", "index": 0 }]]
+    },
+    "Start AI Debate": {
+      "main": [[{ "node": "Post Debate Results", "type": "main", "index": 0 }]]
+    },
+    "Daily Report (9 AM)": {
+      "main": [[{ "node": "Get Players", "type": "main", "index": 0 }]]
+    },
+    "Get Players": {
+      "main": [[{ "node": "Post Daily Report", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "chaos-ai-minecraft"
+  }
+}
