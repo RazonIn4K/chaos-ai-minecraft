@@ -12,6 +12,7 @@ const pvp = require('mineflayer-pvp').plugin;
 const autoeat = require('mineflayer-auto-eat').plugin;
 const armorManager = require('mineflayer-armor-manager');
 const collectBlock = require('mineflayer-collectblock').plugin;
+const Vec3 = require('vec3');
 
 class AIBot {
     /**

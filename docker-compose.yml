@@ -119,7 +119,7 @@ services:
   # ===========================================================================
   ai-controller:
     build:
-      context: ../ai-controller
+      context: ./ai-controller
       dockerfile: Dockerfile
     container_name: chaos-ai-controller
     restart: unless-stopped
@@ -137,7 +137,7 @@ services:
       - ENABLE_AI_DEBATES=${ENABLE_AI_DEBATES:-true}
       - ENABLE_QUESTS=${ENABLE_QUESTS:-true}
     volumes:
-      - ../ai-controller:/app
+      - ./ai-controller:/app
     depends_on:
       minecraft:
         condition: service_healthy
@@ -156,7 +156,7 @@ services:
   # ===========================================================================
   discord-bot:
     build:
-      context: ../discord-bot
+      context: ./discord-bot
       dockerfile: Dockerfile
     container_name: chaos-discord-bot
     restart: unless-stopped
