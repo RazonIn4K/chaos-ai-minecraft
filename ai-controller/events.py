@@ -42,7 +42,7 @@ CHAOS_EVENTS = [
         "announce": "§e§l✨ GOLDEN HOUR! Everything shines! ✨",
         "description": "Luck boost and free golden apples!",
         "commands": [
-            "give @a minecraft:golden_apple 3",
+            "give @a minecraft:golden_apple 2",
             "effect give @a minecraft:luck 300 2",
             "effect give @a minecraft:glowing 60 0"
         ],
@@ -230,7 +230,7 @@ async def trigger_chaos_event(event_name: Optional[str] = None) -> dict:
     delay = event.get("delay_between", 0.5)
     for cmd in event["commands"]:
         try:
-            rcon_command(cmd)
+            await asyncio.to_thread(rcon_command, cmd)
         except Exception as e:
             print(f"Failed to execute command '{cmd}': {e}")
         await asyncio.sleep(delay)

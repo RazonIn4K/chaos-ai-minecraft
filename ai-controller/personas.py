@@ -13,15 +13,15 @@ import google.generativeai as genai
 # API CLIENTS
 # =============================================================================
 
-claude_client = anthropic.Anthropic(
+claude_client = anthropic.AsyncAnthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY", "")
 )
 
-openai_client = openai.OpenAI(
+openai_client = openai.AsyncOpenAI(
     api_key=os.getenv("OPENAI_API_KEY", "")
 )
 
-grok_client = openai.OpenAI(
+grok_client = openai.AsyncOpenAI(
     api_key=os.getenv("XAI_API_KEY", ""),
     base_url="https://api.x.ai/v1"
 )
@@ -142,7 +142,7 @@ async def get_ai_response(
     
     try:
         if model == "claude":
-            response = claude_client.messages.create(
+            response = await claude_client.messages.create(
                 model="claude-sonnet-4-20250514",
                 max_tokens=150,
                 system=system,
@@ -151,7 +151,7 @@ async def get_ai_response(
             return response.content[0].text[:100]
             
         elif model == "grok":
-            response = grok_client.chat.completions.create(
+            response = await grok_client.chat.completions.create(
                 model="grok-beta",
                 messages=[
                     {"role": "system", "content": system},
@@ -162,7 +162,7 @@ async def get_ai_response(
             return response.choices[0].message.content[:100]
             
         elif model == "gpt":
-            response = openai_client.chat.completions.create(
+            response = await openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": system},
@@ -174,7 +174,7 @@ async def get_ai_response(
             
         elif model == "gemini":
             chat = gemini_model.start_chat(history=[])
-            response = chat.send_message(f"{system}\n\n{full_prompt}")
+            response = await chat.send_message_async(f"{system}\n\n{full_prompt}")
             return response.text[:100]
             
     except anthropic.APIError as e:

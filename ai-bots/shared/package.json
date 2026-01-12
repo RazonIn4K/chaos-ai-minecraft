@@ -5,10 +5,9 @@
   "main": "base-bot.js",
   "scripts": {
     "oracle": "node ../claude-bot/index.js",
-    "architect": "node ../gpt-bot/index.js",
-    "trickster": "node ../grok-bot/index.js",
-    "warden": "node ../gemini-bot/index.js",
-    "all": "concurrently \"npm run oracle\" \"npm run architect\""
+    "architect": "node ../openai-bot/index.js",
+    "explorer": "node ../gemini-bot/index.js",
+    "all": "concurrently \"npm run oracle\" \"npm run architect\" \"npm run explorer\""
   },
   "dependencies": {
     "mineflayer": "^4.14.0",

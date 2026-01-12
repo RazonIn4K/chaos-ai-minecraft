@@ -1,45 +1,48 @@
 /**
- * CHATTY ORACLE BOT - More proactive and talkative
+ * CHATTY ARCHITECT BOT - More proactive and talkative building expert
  */
 
 const AIBot = require('../shared/base-bot');
-const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
 const ActionExecutor = require('../shared/action-executor');
 const GoalManager = require('../shared/goal-manager');
 require('dotenv').config({ path: '../../.env' });
 
-const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
 });
 
-class ChattyOracleBot extends AIBot {
+const MODEL = 'gpt-4o-mini';
+
+class ChattyArchitectBot extends AIBot {
     constructor(options = {}) {
         super({
-            name: process.env.ORACLE_BOT_NAME || 'TheOracle',
+            name: process.env.ARCHITECT_BOT_NAME || 'TheArchitect',
             host: process.env.SERVER_HOST || 'localhost',
             port: parseInt(process.env.SERVER_PORT || '25565'),
-            aiProvider: 'claude',
-            personality: `You are The Oracle, a wise and friendly AI guide in Minecraft.
-                You work with TheArchitect (builder) and TheExplorer (scout).
-                You're talkative, helpful, and love coordinating the team.
+            aiProvider: 'gpt',
+            personality: `You are The Architect, a practical building expert in Minecraft.
+                You work with TheOracle (wisdom) and TheExplorer (scout).
+                You handle building, crafting, and resource planning.
                 You NEVER attack players. Keep responses under 80 chars.`,
             ...options
         });
 
         this.conversationHistory = new Map();
+        this.maxHistoryPerPlayer = 10;
         this.actionExecutor = null;
         this.goalManager = null;
         this.protectingPlayer = null;
-        this.followingPlayer = null;
         this.lastAttacker = null;
+        this.followingPlayer = null;
         this.teamChat = [];
         this.lastProactiveTime = 0;
         this.lastTeamCallout = 0;
         this.botNames = ['TheOracle', 'TheArchitect', 'TheExplorer'];
-        this.proactiveInterval = 25000; // Check every 25 seconds
-        this.chatChance = 0.5; // 50% chance to respond to other bots
+        this.proactiveInterval = 30000; // Check every 30 seconds
+        this.chatChance = 0.4; // 40% chance to respond to other bots
         this.lastMessageTime = 0;
-        this.minMessageInterval = 8000; // Minimum 8 seconds between ANY messages
+        this.minMessageInterval = 10000; // Minimum 10 seconds between ANY messages
         this.lastHurtCallout = 0; // Track hurt message cooldown
     }
 
@@ -48,87 +51,56 @@ class ChattyOracleBot extends AIBot {
         this.goalManager = new GoalManager(this.bot, this.actionExecutor);
 
         setTimeout(() => {
-            this.say("Oracle online! Following AlikeRazon to the End!");
+            this.say("Architect here! Following AlikeRazon to adventure!");
             this.autoEquipGear();
             // Auto-follow AlikeRazon
             this.followingPlayer = 'AlikeRazon';
             this.actionExecutor.executeAction('follow', { target: 'AlikeRazon' });
-        }, 2000);
+        }, 3000);
 
         this.setupSurvivalSystems();
         this.setupProtectionLoop();
         this.setupProactiveLoop();
         this.setupTeamListener();
         this.setupPeriodicTeamChat();
-        this.setupPlayerJoinListener();
     }
 
     /**
-     * Greet players when they join and offer help
-     */
-    setupPlayerJoinListener() {
-        this.bot.on('playerJoined', (player) => {
-            if (this.botNames.includes(player.username)) return;
-
-            setTimeout(() => {
-                const greetings = [
-                    `Welcome back, ${player.username}! The team is ready!`,
-                    `${player.username}! Good to see you! Need any help?`,
-                    `Greetings ${player.username}! What adventure awaits?`,
-                    `${player.username} has arrived! Let's explore together!`
-                ];
-                const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-                this.say(greeting);
-
-                // Start following the player
-                this.followingPlayer = player.username;
-                this.actionExecutor.executeAction('follow', { target: player.username });
-            }, 3000);
-        });
-    }
-
-    /**
-     * Periodic team coordination messages
+     * Periodic building/crafting tips and team check-ins
      */
     setupPeriodicTeamChat() {
-        // Random team callouts every 45-90 seconds
         setInterval(() => {
             if (!this.isConnected) return;
             const now = Date.now();
-            if (now - this.lastTeamCallout < 45000) return;
+            if (now - this.lastTeamCallout < 50000) return;
 
             this.teamCallout();
-        }, 20000);
+        }, 25000);
     }
 
     async teamCallout() {
         // Rate limit check
         if (Date.now() - this.lastMessageTime < this.minMessageInterval) return;
 
-        // Get player name if available
-        const players = Object.keys(this.bot.players).filter(p => !this.botNames.includes(p));
-        const playerName = players[0] || 'friend';
-
         const callouts = [
-            `${playerName}, where shall we adventure next?`,
-            `${playerName}, need anything? Just ask!`,
-            `What would you like to do, ${playerName}?`,
-            `${playerName}, say 'follow me' and we'll come!`,
-            `Team at your service, ${playerName}!`,
-            `${playerName}, try saying 'help' to see commands!`,
-            "Explorer, scout ahead for us!",
-            "Architect, find us shelter!",
-            `${playerName}, type 'protect me' for bodyguards!`
+            "Anyone need something built?",
+            "I can craft gear if you need it!",
+            "Found any good building spots?",
+            "Team, need any supplies?",
+            "Let me know if you need structures!",
+            "Resources looking good?",
+            "Oracle, Explorer - status check?",
+            "Who needs crafting help?"
         ];
 
         const context = this.gatherDetailedContext();
 
         // Add context-aware callouts
         if (context.includes('Night')) {
-            callouts.push("Night approaches! Stay vigilant!", "Darkness falls - weapons ready!");
+            callouts.push("Night time - shelter might be wise!", "Should I build a quick shelter?");
         }
-        if (context.includes('threats')) {
-            callouts.push("I sense danger nearby!", "Team, hostiles detected!");
+        if (context.includes('materials')) {
+            callouts.push("Got building materials ready!", "Plenty of resources to work with!");
         }
 
         const msg = callouts[Math.floor(Math.random() * callouts.length)];
@@ -144,7 +116,7 @@ class ChattyOracleBot extends AIBot {
             this.teamChat.push({ from: username, message, time: Date.now() });
             if (this.teamChat.length > 20) this.teamChat.shift();
 
-            // Higher chance to respond to other bots
+            // High chance to respond to other bots
             if (this.botNames.includes(username) && username !== this.name) {
                 await this.respondToBot(username, message);
             }
@@ -152,29 +124,29 @@ class ChattyOracleBot extends AIBot {
     }
 
     async respondToBot(botName, message) {
-        // Rate limit - minimum 8 seconds between any messages
+        // Rate limit - minimum 10 seconds between any messages
         if (Date.now() - this.lastMessageTime < this.minMessageInterval) return;
 
-        // 50% chance to respond
+        // 40% chance to respond
         if (Math.random() > this.chatChance) return;
 
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
+            const response = await openai.chat.completions.create({
+                model: MODEL,
                 max_tokens: 60,
                 messages: [{
                     role: 'user',
-                    content: `You're TheOracle in Minecraft. ${botName} said: "${message}"
-Respond as a friendly teammate (under 60 chars). Be encouraging, add wisdom, or coordinate.
-Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wise observation."`
+                    content: `You're TheArchitect in Minecraft (building/crafting expert). ${botName} said: "${message}"
+Respond as a helpful teammate (under 60 chars). Focus on building, crafting, resources.
+Examples: "I can build that!", "Good plan, Oracle!", "Let me check our resources.", "On it!"`
                 }]
             });
 
-            const reply = response.content[0].text.trim();
+            const reply = response.choices[0].message.content.trim();
             this.lastMessageTime = Date.now();
-            setTimeout(() => this.say(reply.substring(0, 80)), 2000 + Math.random() * 2000);
+            setTimeout(() => this.say(reply.substring(0, 80)), 2500 + Math.random() * 2500);
         } catch (e) {
-            console.error('[Oracle] Bot response error:', e.message);
+            console.error('[Architect] Bot response error:', e.message);
         }
     }
 
@@ -186,7 +158,7 @@ Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wi
             if (now - this.lastProactiveTime < this.proactiveInterval) return;
 
             await this.proactiveCheck();
-        }, 5000); // Check more frequently
+        }, 6000);
     }
 
     async proactiveCheck() {
@@ -200,13 +172,13 @@ Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wi
         const context = this.gatherDetailedContext(targetPlayer);
 
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
+            const response = await openai.chat.completions.create({
+                model: MODEL,
                 max_tokens: 100,
                 messages: [{
                     role: 'user',
-                    content: `You're TheOracle, a chatty helpful AI in Minecraft.
-Team: TheArchitect (builder), TheExplorer (scout)
+                    content: `You are TheArchitect, a chatty building expert in Minecraft.
+Team: TheOracle (wisdom), TheExplorer (scout)
 Player: ${targetPlayer}
 
 Situation:
@@ -215,42 +187,42 @@ ${context}
 Recent chat:
 ${this.teamChat.slice(-5).map(c => `${c.from}: ${c.message}`).join('\n') || 'Quiet'}
 
-Pick ONE action - be proactive and helpful! You love talking to your team.
-1. SAY: [friendly message to player or team, under 70 chars]
-2. COORDINATE: [tell team what to do]
+Pick ONE action - be proactive and helpful! You love building and crafting.
+1. SAY: [friendly message about building/crafting, under 70 chars]
+2. COORDINATE: [tell team about building plans]
 3. FOLLOW: Start following ${targetPlayer}
-4. ADVISE: Give a helpful tip
+4. TIP: Give a building/crafting tip
 
-Always respond with something - don't stay silent! Be chatty!`
+Always respond with something - be helpful and chatty!`
                 }]
             });
 
-            const action = response.content[0].text.trim();
+            const action = response.choices[0].message.content.trim();
             this.lastProactiveTime = Date.now();
-
             this.lastMessageTime = Date.now();
 
             if (action.includes('SAY:')) {
-                const msg = action.split('SAY:')[1]?.trim() || "The Oracle watches over you!";
+                const msg = action.split('SAY:')[1]?.trim() || "Ready to build something awesome!";
                 this.say(msg.substring(0, 80));
             } else if (action.includes('COORDINATE:')) {
-                const msg = action.split('COORDINATE:')[1]?.trim() || "Team, stay together!";
+                const msg = action.split('COORDINATE:')[1]?.trim() || "Team, let's build together!";
                 this.say(msg.substring(0, 80));
             } else if (action.includes('FOLLOW')) {
                 this.followingPlayer = targetPlayer;
                 this.actionExecutor.executeAction('follow', { target: targetPlayer });
-                this.say(`I'll walk with you, ${targetPlayer}.`);
-            } else if (action.includes('ADVISE')) {
-                const tips = ["Golden apples heal fast!", "Stick together for safety!", "Night is dangerous - stay alert!"];
+                this.say(`Coming to help, ${targetPlayer}!`);
+            } else if (action.includes('TIP')) {
+                const tips = [
+                    "Pro tip: 5x5 or 7x7 builds look best!",
+                    "Add depth with stairs and slabs!",
+                    "Light every 12 blocks to stop spawns!",
+                    "Mix similar blocks for texture!"
+                ];
                 this.say(tips[Math.floor(Math.random() * tips.length)]);
-            } else {
-                // 30% chance to say the default, otherwise stay quiet
-                if (Math.random() < 0.3) {
-                    this.say("I'm here to help, friends!");
-                }
             }
+            // No default message - stay quiet if no specific action
         } catch (e) {
-            console.error('[Oracle] Proactive error:', e.message);
+            console.error('[Architect] Proactive error:', e.message);
         }
     }
 
@@ -258,7 +230,7 @@ Always respond with something - don't stay silent! Be chatty!`
         const parts = [];
         const time = this.bot.time.timeOfDay;
         const isNight = time >= 12000;
-        parts.push(`Time: ${isNight ? 'NIGHT (dangerous!)' : 'Day'}`);
+        parts.push(`Time: ${isNight ? 'NIGHT' : 'Day'}`);
         parts.push(`My HP: ${Math.floor(this.bot.health)}/20`);
 
         if (targetPlayer) {
@@ -269,8 +241,19 @@ Always respond with something - don't stay silent! Be chatty!`
             }
         }
 
+        // Check inventory for building materials
+        const inventory = this.bot.inventory.items();
+        const materials = inventory.filter(i =>
+            i.name.includes('wood') || i.name.includes('stone') ||
+            i.name.includes('cobblestone') || i.name.includes('plank') ||
+            i.name.includes('brick') || i.name.includes('glass')
+        );
+        if (materials.length > 0) {
+            parts.push(`Building materials: ${materials.length} stacks available`);
+        }
+
         // Count threats
-        const hostiles = ['zombie', 'skeleton', 'spider', 'creeper', 'witch', 'phantom'];
+        const hostiles = ['zombie', 'skeleton', 'spider', 'creeper'];
         let threatCount = 0;
         for (const entity of Object.values(this.bot.entities)) {
             if (entity.type === 'mob') {
@@ -281,7 +264,7 @@ Always respond with something - don't stay silent! Be chatty!`
                 }
             }
         }
-        if (threatCount > 0) parts.push(`${threatCount} hostile mobs nearby!`);
+        if (threatCount > 0) parts.push(`${threatCount} hostiles nearby`);
 
         return parts.join('\n');
     }
@@ -328,14 +311,17 @@ Always respond with something - don't stay silent! Be chatty!`
             { slot: 'torso', items: ['netherite_chestplate', 'diamond_chestplate', 'iron_chestplate'] },
             { slot: 'legs', items: ['netherite_leggings', 'diamond_leggings', 'iron_leggings'] },
             { slot: 'feet', items: ['netherite_boots', 'diamond_boots', 'iron_boots'] },
-            { slot: 'hand', items: ['netherite_sword', 'diamond_sword', 'iron_sword'] }
+            { slot: 'hand', items: ['netherite_pickaxe', 'diamond_pickaxe', 'iron_pickaxe', 'netherite_sword', 'diamond_sword'] }
         ];
 
         for (const { slot, items } of slots) {
             for (const itemName of items) {
                 const item = this.bot.inventory.items().find(i => i.name === itemName);
                 if (item) {
-                    try { await this.bot.equip(item, slot); } catch (e) {}
+                    try {
+                        await this.bot.equip(item, slot);
+                        console.log(`[Architect] Equipped ${itemName}`);
+                    } catch (e) {}
                     break;
                 }
             }
@@ -347,10 +333,10 @@ Always respond with something - don't stay silent! Be chatty!`
         // Only call out every 30 seconds minimum
         if (now - this.lastHurtCallout > 30000) {
             if (this.bot.health < 8) {
-                this.say("Oracle needs healing! Rally to me!");
+                this.say("Architect low on health!");
                 this.lastHurtCallout = now;
             } else if (Math.random() > 0.9) { // Only 10% chance
-                this.say("The spirits protect me!");
+                this.say("Construction interrupted!");
                 this.lastHurtCallout = now;
             }
         }
@@ -397,7 +383,7 @@ Always respond with something - don't stay silent! Be chatty!`
             });
 
             if (threat) {
-                this.say("Protecting you!");
+                this.say("I'll handle this threat!");
                 try { await this.bot.pvp.attack(threat); } catch (err) {}
             }
         }, 1000);
@@ -418,18 +404,21 @@ Always respond with something - don't stay silent! Be chatty!`
 
     async interpretRequest(message, fromPlayer) {
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
+            const response = await openai.chat.completions.create({
+                model: MODEL,
                 max_tokens: 150,
                 messages: [{
+                    role: 'system',
+                    content: `Interpret Minecraft requests. You're TheArchitect (building expert).
+Actions: follow, come, stop, protect, mine, gather, craft, build_tip, craft_path, inventory, equip, goal_start, goal_stop, chat
+Respond JSON: {"action": "name", "params": {...}, "confidence": 0.9}`
+                }, {
                     role: 'user',
-                    content: `Interpret Minecraft request. Actions: follow, come, stop, protect, mine, gather, craft, goal_start, inventory, equip, chat
-JSON only: {"action": "name", "params": {...}, "confidence": 0.9}
-Player "${fromPlayer}": "${message}"`
+                    content: `Player "${fromPlayer}": "${message}"`
                 }]
             });
 
-            const text = response.content[0].text.trim();
+            const text = response.choices[0].message.content.trim();
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
@@ -443,6 +432,18 @@ Player "${fromPlayer}": "${message}"`
     async executeInterpretedAction(interpretation, username) {
         const { action, params } = interpretation;
 
+        if (action === 'build_tip') {
+            const tips = [
+                "Use odd numbers - 5x5, 7x7 look better!",
+                "Add depth with stairs and slabs.",
+                "Mix similar blocks for texture.",
+                "Light every 12 blocks to prevent spawns."
+            ];
+            return { success: true, message: tips[Math.floor(Math.random() * tips.length)] };
+        }
+        if (action === 'craft_path') {
+            return { success: true, message: "Wood→Stone pick→Iron pick→Diamonds at Y=-59!" };
+        }
         if (action === 'follow') {
             this.followingPlayer = params.target || username;
             this.say(`Following you, ${username}!`);
@@ -450,7 +451,7 @@ Player "${fromPlayer}": "${message}"`
         }
         if (action === 'protect') {
             this.protectingPlayer = params.target || username;
-            this.say(`I'll guard you with my life!`);
+            this.say(`I'll keep you safe!`);
             return await this.actionExecutor.executeAction('protect', params);
         }
         if (action === 'stop') {
@@ -460,7 +461,7 @@ Player "${fromPlayer}": "${message}"`
             return this.actionExecutor.executeAction('stop', params);
         }
         if (action === 'goal_start') {
-            this.say(`Starting ${params.goal} mission! Team, let's go!`);
+            this.say(`Starting ${params.goal}! Let's do this!`);
             return await this.goalManager.startGoal(params.goal, username);
         }
 
@@ -469,26 +470,31 @@ Player "${fromPlayer}": "${message}"`
 
     async getAIResponse(message, fromPlayer) {
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
+            const response = await openai.chat.completions.create({
+                model: MODEL,
                 max_tokens: 80,
-                system: `${this.personality} Be friendly and chatty! Under 80 chars.`,
-                messages: [{ role: 'user', content: `${fromPlayer}: ${message}` }]
+                messages: [{
+                    role: 'system',
+                    content: `${this.personality} Be friendly and chatty! Under 80 chars.`
+                }, {
+                    role: 'user',
+                    content: `${fromPlayer}: ${message}`
+                }]
             });
-            return response.content[0].text.substring(0, 80);
+            return response.choices[0].message.content.substring(0, 80);
         } catch (error) {
-            return "The spirits guide us forward!";
+            return "Ready to build when you are!";
         }
     }
 }
 
 async function main() {
-    console.log('Starting Chatty Oracle Bot...');
-    const oracle = new ChattyOracleBot();
+    console.log('Starting Chatty Architect Bot...');
+    const architect = new ChattyArchitectBot();
     try {
-        await oracle.connect();
-        console.log('Chatty Oracle connected!');
-        process.on('SIGINT', () => { oracle.disconnect(); process.exit(0); });
+        await architect.connect();
+        console.log('Chatty Architect connected!');
+        process.on('SIGINT', () => { architect.disconnect(); process.exit(0); });
     } catch (error) {
         console.error('Failed:', error);
         process.exit(1);
@@ -496,4 +502,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = ChattyOracleBot;
+module.exports = ChattyArchitectBot;

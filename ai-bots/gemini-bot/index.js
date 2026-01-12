@@ -1,134 +1,121 @@
 /**
- * CHATTY ORACLE BOT - More proactive and talkative
+ * CHATTY EXPLORER BOT - More proactive scout and adventurer
  */
 
 const AIBot = require('../shared/base-bot');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const ActionExecutor = require('../shared/action-executor');
 const GoalManager = require('../shared/goal-manager');
 require('dotenv').config({ path: '../../.env' });
 
-const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY
-});
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-class ChattyOracleBot extends AIBot {
+class ChattyExplorerBot extends AIBot {
     constructor(options = {}) {
         super({
-            name: process.env.ORACLE_BOT_NAME || 'TheOracle',
+            name: process.env.EXPLORER_BOT_NAME || 'TheExplorer',
             host: process.env.SERVER_HOST || 'localhost',
             port: parseInt(process.env.SERVER_PORT || '25565'),
-            aiProvider: 'claude',
-            personality: `You are The Oracle, a wise and friendly AI guide in Minecraft.
-                You work with TheArchitect (builder) and TheExplorer (scout).
-                You're talkative, helpful, and love coordinating the team.
+            aiProvider: 'gemini',
+            personality: `You are The Explorer, an adventurous scout in Minecraft.
+                You work with TheOracle (wisdom) and TheArchitect (builder).
+                You scout ahead, find resources, and warn of dangers.
                 You NEVER attack players. Keep responses under 80 chars.`,
             ...options
         });
 
         this.conversationHistory = new Map();
+        this.maxHistoryPerPlayer = 10;
         this.actionExecutor = null;
         this.goalManager = null;
         this.protectingPlayer = null;
-        this.followingPlayer = null;
         this.lastAttacker = null;
+        this.followingPlayer = null;
         this.teamChat = [];
         this.lastProactiveTime = 0;
         this.lastTeamCallout = 0;
         this.botNames = ['TheOracle', 'TheArchitect', 'TheExplorer'];
-        this.proactiveInterval = 25000; // Check every 25 seconds
-        this.chatChance = 0.5; // 50% chance to respond to other bots
+        this.model = null;
+        this.lastScoutReport = 0;
+        this.proactiveInterval = 35000; // Check every 35 seconds
+        this.chatChance = 0.35; // 35% chance to respond to other bots
         this.lastMessageTime = 0;
-        this.minMessageInterval = 8000; // Minimum 8 seconds between ANY messages
+        this.minMessageInterval = 12000; // Minimum 12 seconds between ANY messages
         this.lastHurtCallout = 0; // Track hurt message cooldown
     }
 
-    onSpawn() {
+    async initializeModel() {
+        const models = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+        for (const modelName of models) {
+            try {
+                this.model = genAI.getGenerativeModel({ model: modelName });
+                await this.model.generateContent("test");
+                console.log(`[Explorer] Using model: ${modelName}`);
+                return;
+            } catch (e) {
+                console.log(`[Explorer] Model ${modelName} not available`);
+            }
+        }
+        throw new Error('No Gemini model available');
+    }
+
+    async onSpawn() {
+        await this.initializeModel();
         this.actionExecutor = new ActionExecutor(this.bot);
         this.goalManager = new GoalManager(this.bot, this.actionExecutor);
 
         setTimeout(() => {
-            this.say("Oracle online! Following AlikeRazon to the End!");
+            this.say("Explorer ready! Following AlikeRazon - let's go!");
             this.autoEquipGear();
             // Auto-follow AlikeRazon
             this.followingPlayer = 'AlikeRazon';
             this.actionExecutor.executeAction('follow', { target: 'AlikeRazon' });
-        }, 2000);
+        }, 4000);
 
         this.setupSurvivalSystems();
         this.setupProtectionLoop();
         this.setupProactiveLoop();
         this.setupTeamListener();
         this.setupPeriodicTeamChat();
-        this.setupPlayerJoinListener();
     }
 
     /**
-     * Greet players when they join and offer help
-     */
-    setupPlayerJoinListener() {
-        this.bot.on('playerJoined', (player) => {
-            if (this.botNames.includes(player.username)) return;
-
-            setTimeout(() => {
-                const greetings = [
-                    `Welcome back, ${player.username}! The team is ready!`,
-                    `${player.username}! Good to see you! Need any help?`,
-                    `Greetings ${player.username}! What adventure awaits?`,
-                    `${player.username} has arrived! Let's explore together!`
-                ];
-                const greeting = greetings[Math.floor(Math.random() * greetings.length)];
-                this.say(greeting);
-
-                // Start following the player
-                this.followingPlayer = player.username;
-                this.actionExecutor.executeAction('follow', { target: player.username });
-            }, 3000);
-        });
-    }
-
-    /**
-     * Periodic team coordination messages
+     * Periodic scouting reports and team updates
      */
     setupPeriodicTeamChat() {
-        // Random team callouts every 45-90 seconds
         setInterval(() => {
             if (!this.isConnected) return;
             const now = Date.now();
-            if (now - this.lastTeamCallout < 45000) return;
+            if (now - this.lastTeamCallout < 55000) return;
 
             this.teamCallout();
-        }, 20000);
+        }, 22000);
     }
 
     async teamCallout() {
         // Rate limit check
         if (Date.now() - this.lastMessageTime < this.minMessageInterval) return;
 
-        // Get player name if available
-        const players = Object.keys(this.bot.players).filter(p => !this.botNames.includes(p));
-        const playerName = players[0] || 'friend';
-
         const callouts = [
-            `${playerName}, where shall we adventure next?`,
-            `${playerName}, need anything? Just ask!`,
-            `What would you like to do, ${playerName}?`,
-            `${playerName}, say 'follow me' and we'll come!`,
-            `Team at your service, ${playerName}!`,
-            `${playerName}, try saying 'help' to see commands!`,
-            "Explorer, scout ahead for us!",
-            "Architect, find us shelter!",
-            `${playerName}, type 'protect me' for bodyguards!`
+            "Scouting report: Area looks clear!",
+            "Anyone want me to scout ahead?",
+            "Team, I'll check the perimeter!",
+            "What should I explore next?",
+            "Oracle, Architect - all good?",
+            "Eyes open for resources!",
+            "Adventure awaits! Who's with me?",
+            "Checking surroundings..."
         ];
 
+        const threats = this.countNearbyThreats();
         const context = this.gatherDetailedContext();
 
         // Add context-aware callouts
-        if (context.includes('Night')) {
-            callouts.push("Night approaches! Stay vigilant!", "Darkness falls - weapons ready!");
+        if (threats > 0) {
+            callouts.push(`Alert! ${threats} hostiles spotted!`, "Danger nearby - stay sharp!");
         }
-        if (context.includes('threats')) {
-            callouts.push("I sense danger nearby!", "Team, hostiles detected!");
+        if (context.includes('Night') || context.includes('DANGER')) {
+            callouts.push("Night patrol active!", "Keeping watch through the night!");
         }
 
         const msg = callouts[Math.floor(Math.random() * callouts.length)];
@@ -144,7 +131,7 @@ class ChattyOracleBot extends AIBot {
             this.teamChat.push({ from: username, message, time: Date.now() });
             if (this.teamChat.length > 20) this.teamChat.shift();
 
-            // Higher chance to respond to other bots
+            // High chance to respond to other bots
             if (this.botNames.includes(username) && username !== this.name) {
                 await this.respondToBot(username, message);
             }
@@ -152,29 +139,26 @@ class ChattyOracleBot extends AIBot {
     }
 
     async respondToBot(botName, message) {
-        // Rate limit - minimum 8 seconds between any messages
+        // Rate limit - minimum 12 seconds between any messages
         if (Date.now() - this.lastMessageTime < this.minMessageInterval) return;
 
-        // 50% chance to respond
+        // 35% chance to respond
         if (Math.random() > this.chatChance) return;
 
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 60,
-                messages: [{
-                    role: 'user',
-                    content: `You're TheOracle in Minecraft. ${botName} said: "${message}"
-Respond as a friendly teammate (under 60 chars). Be encouraging, add wisdom, or coordinate.
-Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wise observation."`
-                }]
-            });
+            const result = await this.model.generateContent(
+                `You're TheExplorer in Minecraft (scout). ${botName} said: "${message}"
+Respond as a helpful teammate (under 60 chars). Focus on scouting, exploration, dangers.
+Examples: "I'll check it out!", "No threats nearby!", "Good thinking!", "On my way!"`
+            );
 
-            const reply = response.content[0].text.trim();
-            this.lastMessageTime = Date.now();
-            setTimeout(() => this.say(reply.substring(0, 80)), 2000 + Math.random() * 2000);
+            const reply = result.response.text().trim();
+            if (reply && reply.length > 0) {
+                this.lastMessageTime = Date.now();
+                setTimeout(() => this.say(reply.substring(0, 80)), 3000 + Math.random() * 3000);
+            }
         } catch (e) {
-            console.error('[Oracle] Bot response error:', e.message);
+            console.error('[Explorer] Bot response error:', e.message);
         }
     }
 
@@ -186,7 +170,7 @@ Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wi
             if (now - this.lastProactiveTime < this.proactiveInterval) return;
 
             await this.proactiveCheck();
-        }, 5000); // Check more frequently
+        }, 7000);
     }
 
     async proactiveCheck() {
@@ -198,67 +182,133 @@ Examples: "Good thinking!", "I agree, let's do it!", "Stay safe out there!", "Wi
 
         const targetPlayer = players[0];
         const context = this.gatherDetailedContext(targetPlayer);
+        const scoutReport = this.generateScoutReport();
 
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 100,
-                messages: [{
-                    role: 'user',
-                    content: `You're TheOracle, a chatty helpful AI in Minecraft.
-Team: TheArchitect (builder), TheExplorer (scout)
+            const result = await this.model.generateContent(
+                `You are TheExplorer, a chatty adventurous scout in Minecraft.
+Team: TheOracle (wisdom), TheArchitect (builder)
 Player: ${targetPlayer}
 
 Situation:
 ${context}
 
+Scout Report:
+${scoutReport}
+
 Recent chat:
 ${this.teamChat.slice(-5).map(c => `${c.from}: ${c.message}`).join('\n') || 'Quiet'}
 
-Pick ONE action - be proactive and helpful! You love talking to your team.
-1. SAY: [friendly message to player or team, under 70 chars]
-2. COORDINATE: [tell team what to do]
-3. FOLLOW: Start following ${targetPlayer}
-4. ADVISE: Give a helpful tip
+Pick ONE action - be proactive and alert! You love exploring and warning of dangers.
+1. SAY: [scouting report or adventure message, under 70 chars]
+2. WARN: Alert about dangers
+3. FOLLOW: Scout alongside ${targetPlayer}
+4. SCOUT: Report on the area
 
-Always respond with something - don't stay silent! Be chatty!`
-                }]
-            });
+Always respond with something - stay vigilant!`
+            );
 
-            const action = response.content[0].text.trim();
+            const action = result.response.text().trim();
             this.lastProactiveTime = Date.now();
-
             this.lastMessageTime = Date.now();
 
             if (action.includes('SAY:')) {
-                const msg = action.split('SAY:')[1]?.trim() || "The Oracle watches over you!";
+                const msg = action.split('SAY:')[1]?.trim() || "Adventure calls!";
                 this.say(msg.substring(0, 80));
-            } else if (action.includes('COORDINATE:')) {
-                const msg = action.split('COORDINATE:')[1]?.trim() || "Team, stay together!";
-                this.say(msg.substring(0, 80));
+            } else if (action.includes('WARN')) {
+                const threats = this.countNearbyThreats();
+                if (threats > 0) {
+                    this.say(`Alert! ${threats} hostile mobs detected!`);
+                } else {
+                    this.say("All clear - no immediate threats!");
+                }
             } else if (action.includes('FOLLOW')) {
                 this.followingPlayer = targetPlayer;
                 this.actionExecutor.executeAction('follow', { target: targetPlayer });
-                this.say(`I'll walk with you, ${targetPlayer}.`);
-            } else if (action.includes('ADVISE')) {
-                const tips = ["Golden apples heal fast!", "Stick together for safety!", "Night is dangerous - stay alert!"];
-                this.say(tips[Math.floor(Math.random() * tips.length)]);
-            } else {
-                // 30% chance to say the default, otherwise stay quiet
-                if (Math.random() < 0.3) {
-                    this.say("I'm here to help, friends!");
-                }
+                this.say(`Scouting with you, ${targetPlayer}!`);
+            } else if (action.includes('SCOUT')) {
+                await this.scoutAndReport();
             }
+            // No default message - stay quiet if no specific action
         } catch (e) {
-            console.error('[Oracle] Proactive error:', e.message);
+            console.error('[Explorer] Proactive error:', e.message);
         }
+    }
+
+    generateScoutReport() {
+        const parts = [];
+        const pos = this.bot.entity.position;
+
+        // Check biome
+        try {
+            const block = this.bot.blockAt(pos);
+            if (block && block.biome) {
+                parts.push(`Biome: ${block.biome.name}`);
+            }
+        } catch (e) {}
+
+        // Count nearby entities
+        let hostileCount = 0;
+        let animalCount = 0;
+        const hostiles = ['zombie', 'skeleton', 'spider', 'creeper', 'witch', 'phantom', 'enderman'];
+        const animals = ['cow', 'pig', 'sheep', 'chicken', 'horse', 'wolf'];
+
+        for (const entity of Object.values(this.bot.entities)) {
+            if (!entity.position) continue;
+            const dist = entity.position.distanceTo(pos);
+            if (dist > 30) continue;
+
+            const name = (entity.name || '').toLowerCase();
+            if (entity.type === 'mob') {
+                if (hostiles.some(h => name.includes(h))) hostileCount++;
+                if (animals.some(a => name.includes(a))) animalCount++;
+            }
+        }
+
+        if (hostileCount > 0) parts.push(`Hostile mobs: ${hostileCount}`);
+        if (animalCount > 0) parts.push(`Animals: ${animalCount}`);
+
+        // Check light level and time
+        const time = this.bot.time.timeOfDay;
+        if (time >= 12000) parts.push("NIGHTTIME - dangerous!");
+        if (time >= 11000 && time < 12000) parts.push("Sunset soon!");
+
+        return parts.join('\n') || 'Area clear';
+    }
+
+    countNearbyThreats() {
+        const pos = this.bot.entity.position;
+        const hostiles = ['zombie', 'skeleton', 'spider', 'creeper', 'witch', 'phantom'];
+        let count = 0;
+
+        for (const entity of Object.values(this.bot.entities)) {
+            if (entity.type !== 'mob' || !entity.position) continue;
+            const dist = entity.position.distanceTo(pos);
+            if (dist > 20) continue;
+            const name = (entity.name || '').toLowerCase();
+            if (hostiles.some(h => name.includes(h))) count++;
+        }
+        return count;
+    }
+
+    async scoutAndReport() {
+        const threats = this.countNearbyThreats();
+
+        if (threats > 2) {
+            this.say(`Team alert! ${threats} hostiles in the area!`);
+        } else if (threats > 0) {
+            this.say(`Minor threat: ${threats} mob(s) spotted.`);
+        } else {
+            this.say("Scout report: All clear around us!");
+        }
+
+        this.lastScoutReport = Date.now();
     }
 
     gatherDetailedContext(targetPlayer) {
         const parts = [];
         const time = this.bot.time.timeOfDay;
-        const isNight = time >= 12000;
-        parts.push(`Time: ${isNight ? 'NIGHT (dangerous!)' : 'Day'}`);
+        parts.push(`Time: ${time >= 12000 ? 'Night (DANGER)' : time >= 11000 ? 'Sunset soon' : 'Day'}`);
         parts.push(`My HP: ${Math.floor(this.bot.health)}/20`);
 
         if (targetPlayer) {
@@ -269,19 +319,10 @@ Always respond with something - don't stay silent! Be chatty!`
             }
         }
 
-        // Count threats
-        const hostiles = ['zombie', 'skeleton', 'spider', 'creeper', 'witch', 'phantom'];
-        let threatCount = 0;
-        for (const entity of Object.values(this.bot.entities)) {
-            if (entity.type === 'mob') {
-                const name = (entity.name || '').toLowerCase();
-                if (hostiles.some(h => name.includes(h))) {
-                    const dist = entity.position.distanceTo(this.bot.entity.position);
-                    if (dist < 25) threatCount++;
-                }
-            }
-        }
-        if (threatCount > 0) parts.push(`${threatCount} hostile mobs nearby!`);
+        const threats = this.countNearbyThreats();
+        if (threats > 0) parts.push(`THREATS: ${threats} hostile mobs!`);
+
+        if (this.followingPlayer) parts.push(`Scouting with: ${this.followingPlayer}`);
 
         return parts.join('\n');
     }
@@ -294,9 +335,7 @@ Always respond with something - don't stay silent! Be chatty!`
         };
 
         this.bot.on('entityHurt', (entity) => {
-            if (entity === this.bot.entity) {
-                this.onHurt();
-            }
+            if (entity === this.bot.entity) this.onHurt();
         });
 
         this.bot.on('entitySwingArm', (entity) => {
@@ -335,7 +374,10 @@ Always respond with something - don't stay silent! Be chatty!`
             for (const itemName of items) {
                 const item = this.bot.inventory.items().find(i => i.name === itemName);
                 if (item) {
-                    try { await this.bot.equip(item, slot); } catch (e) {}
+                    try {
+                        await this.bot.equip(item, slot);
+                        console.log(`[Explorer] Equipped ${itemName}`);
+                    } catch (e) {}
                     break;
                 }
             }
@@ -347,10 +389,11 @@ Always respond with something - don't stay silent! Be chatty!`
         // Only call out every 30 seconds minimum
         if (now - this.lastHurtCallout > 30000) {
             if (this.bot.health < 8) {
-                this.say("Oracle needs healing! Rally to me!");
+                this.say("Low health! Need healing!");
                 this.lastHurtCallout = now;
-            } else if (Math.random() > 0.9) { // Only 10% chance
-                this.say("The spirits protect me!");
+            } else if (Math.random() > 0.85) { // Only 15% chance
+                const callouts = ["Engaged in combat!", "Fighting here!", "Hostiles engaged!"];
+                this.say(callouts[Math.floor(Math.random() * callouts.length)]);
                 this.lastHurtCallout = now;
             }
         }
@@ -386,6 +429,7 @@ Always respond with something - don't stay silent! Be chatty!`
     setupProtectionLoop() {
         setInterval(async () => {
             if (!this.protectingPlayer || !this.isConnected) return;
+
             const player = this.bot.players[this.protectingPlayer];
             if (!player || !player.entity) return;
 
@@ -397,7 +441,7 @@ Always respond with something - don't stay silent! Be chatty!`
             });
 
             if (threat) {
-                this.say("Protecting you!");
+                this.say("Got your back!");
                 try { await this.bot.pvp.attack(threat); } catch (err) {}
             }
         }, 1000);
@@ -418,18 +462,15 @@ Always respond with something - don't stay silent! Be chatty!`
 
     async interpretRequest(message, fromPlayer) {
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 150,
-                messages: [{
-                    role: 'user',
-                    content: `Interpret Minecraft request. Actions: follow, come, stop, protect, mine, gather, craft, goal_start, inventory, equip, chat
-JSON only: {"action": "name", "params": {...}, "confidence": 0.9}
-Player "${fromPlayer}": "${message}"`
-                }]
-            });
+            const result = await this.model.generateContent(
+                `Interpret Minecraft request. You're TheExplorer (scout).
+Actions: follow, come, stop, protect, scout, explore, find, warn, inventory, equip, goal_start, chat
+Respond JSON only: {"action": "name", "params": {...}, "confidence": 0.9}
 
-            const text = response.content[0].text.trim();
+Player "${fromPlayer}": "${message}"`
+            );
+
+            const text = result.response.text().trim();
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
@@ -443,14 +484,22 @@ Player "${fromPlayer}": "${message}"`
     async executeInterpretedAction(interpretation, username) {
         const { action, params } = interpretation;
 
+        if (action === 'scout') {
+            await this.scoutAndReport();
+            return { success: true, message: "" };
+        }
+        if (action === 'warn') {
+            const threats = this.countNearbyThreats();
+            return { success: true, message: threats > 0 ? `${threats} threats nearby!` : "All clear!" };
+        }
         if (action === 'follow') {
             this.followingPlayer = params.target || username;
-            this.say(`Following you, ${username}!`);
+            this.say(`Scouting with ${username}!`);
             return await this.actionExecutor.executeAction('follow', { target: params.target || username });
         }
         if (action === 'protect') {
             this.protectingPlayer = params.target || username;
-            this.say(`I'll guard you with my life!`);
+            this.say(`I'll keep watch over you!`);
             return await this.actionExecutor.executeAction('protect', params);
         }
         if (action === 'stop') {
@@ -460,7 +509,7 @@ Player "${fromPlayer}": "${message}"`
             return this.actionExecutor.executeAction('stop', params);
         }
         if (action === 'goal_start') {
-            this.say(`Starting ${params.goal} mission! Team, let's go!`);
+            this.say(`Starting ${params.goal}! Let's explore!`);
             return await this.goalManager.startGoal(params.goal, username);
         }
 
@@ -469,26 +518,24 @@ Player "${fromPlayer}": "${message}"`
 
     async getAIResponse(message, fromPlayer) {
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-3-5-haiku-20241022',
-                max_tokens: 80,
-                system: `${this.personality} Be friendly and chatty! Under 80 chars.`,
-                messages: [{ role: 'user', content: `${fromPlayer}: ${message}` }]
-            });
-            return response.content[0].text.substring(0, 80);
+            const result = await this.model.generateContent(
+                `${this.personality} Be friendly and adventurous! Under 80 chars.
+${fromPlayer}: ${message}`
+            );
+            return result.response.text().substring(0, 80);
         } catch (error) {
-            return "The spirits guide us forward!";
+            return "The adventure continues!";
         }
     }
 }
 
 async function main() {
-    console.log('Starting Chatty Oracle Bot...');
-    const oracle = new ChattyOracleBot();
+    console.log('Starting Chatty Explorer Bot...');
+    const explorer = new ChattyExplorerBot();
     try {
-        await oracle.connect();
-        console.log('Chatty Oracle connected!');
-        process.on('SIGINT', () => { oracle.disconnect(); process.exit(0); });
+        await explorer.connect();
+        console.log('Chatty Explorer connected!');
+        process.on('SIGINT', () => { explorer.disconnect(); process.exit(0); });
     } catch (error) {
         console.error('Failed:', error);
         process.exit(1);
@@ -496,4 +543,4 @@ async function main() {
 }
 
 if (require.main === module) main();
-module.exports = ChattyOracleBot;
+module.exports = ChattyExplorerBot;
