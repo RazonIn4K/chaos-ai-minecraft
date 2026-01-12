@@ -2,6 +2,38 @@
 
 All notable changes to the Chaos AI Minecraft project are documented here.
 
+## [1.1.1] - 2025-01-12
+
+### Fixed
+
+#### Critical Bot Startup Issues
+- **Added `action-executor.js`** - Missing module that was causing all bots to crash on startup
+- **Added `goal-manager.js`** - Missing module for high-level goal management
+- **Fixed Vec3 import** in `base-bot.js` - Was causing runtime errors when placing blocks
+
+#### Docker Configuration
+- Fixed `docker-compose.yml` paths - Changed `../ai-controller` to `./ai-controller`
+- Fixed `../discord-bot` to `./discord-bot`
+
+#### Outdated References Cleanup
+- Removed all XAI/Grok API references from docker-compose.yml and .env.example
+- Updated n8n-workflows to use oracle/architect/explorer (was trickster/warden)
+- Fixed AGENTS.md API key references
+
+### Changed
+
+#### Dependency Updates
+| Package | Old Version | New Version |
+|---------|-------------|-------------|
+| mineflayer | 4.14.0 | 4.20.0+ |
+| @anthropic-ai/sdk | 0.18.0 | 0.25.0+ |
+| openai | 4.28.0 | 4.50.0+ |
+| @google/generative-ai | 0.2.0 | 0.15.0+ |
+| google-generativeai (Python) | 0.4.0 | 0.5.0+ |
+| vec3 | (not installed) | 0.1.10 |
+
+---
+
 ## [1.1.0] - 2025-01-12
 
 ### Added
