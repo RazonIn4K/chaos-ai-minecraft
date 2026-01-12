@@ -29,14 +29,10 @@ A Minecraft server where **multiple AI models exist as characters in your world*
 │           │                       │                        │                │
 │           ▼                       ▼                        ▼                │
 │  ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐       │
-│  │     CLAUDE      │     │      GROK       │     │      GPT        │       │
-│  │   "The Oracle"  │     │ "The Trickster" │     │ "The Architect" │       │
+│  │     CLAUDE      │     │      GPT        │     │     GEMINI      │       │
+│  │   "The Oracle"  │     │ "The Architect" │     │  "The Explorer" │       │
+│  │   Team Leader   │     │ Building Expert │     │  Scout/Navigator│       │
 │  └─────────────────┘     └─────────────────┘     └─────────────────┘       │
-│                                   │                                         │
-│                          ┌────────┴────────┐                               │
-│                          │     GEMINI      │                               │
-│                          │  "The Warden"   │                               │
-│                          └─────────────────┘                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -44,10 +40,11 @@ A Minecraft server where **multiple AI models exist as characters in your world*
 
 | Character | Model | Role | Capabilities |
 |-----------|-------|------|--------------|
-| **The Oracle** | Claude | Wise Guide | Cryptic hints, quest generation, nearby resource sensing |
-| **The Trickster** | Grok | Chaos Agent | Random events, pranks, meme drops |
-| **The Architect** | GPT-4 | Builder | Joins as player bot, builds structures, mines resources |
-| **The Warden** | Gemini | Guardian | Threat announcements, difficulty control |
+| **The Oracle** | Claude 3.5 Haiku | Team Leader | Wise guidance, team coordination, strategic planning |
+| **The Architect** | GPT-4o-mini | Building Expert | Construction advice, resource gathering, base planning |
+| **The Explorer** | Gemini 2.5 Flash | Scout/Navigator | Area reconnaissance, threat detection, pathfinding |
+
+All bots join as actual players using Mineflayer and respond to in-game chat!
 
 ## ⚡ Chaos Events
 
@@ -102,22 +99,18 @@ docker compose up -d
 
 ```
 chaos-ai-minecraft/
-├── server/                 # Minecraft server configuration
-│   ├── docker-compose.yml  # Main Docker composition
-│   ├── mods/               # Fabric mods (download separately)
-│   └── config/             # Server configuration files
+├── docker-compose.yml      # Main Docker composition
 ├── ai-controller/          # FastAPI AI orchestration service
 │   ├── main.py             # API endpoints
 │   ├── events.py           # Chaos event definitions
 │   ├── personas.py         # AI character definitions
 │   └── Dockerfile
 ├── ai-bots/                # Mineflayer AI player bots
-│   ├── shared/             # Shared bot framework
-│   ├── claude-bot/         # The Oracle
-│   ├── gpt-bot/            # The Architect
-│   ├── grok-bot/           # The Trickster
-│   └── gemini-bot/         # The Warden
-├── discord-bot/            # Discord integration
+│   ├── shared/             # Shared bot framework & dependencies
+│   ├── claude-bot/         # The Oracle (Claude)
+│   ├── openai-bot/         # The Architect (GPT-4o-mini)
+│   └── gemini-bot/         # The Explorer (Gemini)
+├── discord-bot/            # Discord integration (optional)
 ├── n8n-workflows/          # Automation workflows
 ├── scripts/                # Setup and management scripts
 └── docs/                   # Documentation
@@ -127,11 +120,15 @@ chaos-ai-minecraft/
 
 ### In-Game Chat Commands
 
+Talk directly to the bots in-game! They respond to their names:
+
 ```
-@oracle what dangers lurk nearby?
-@trickster make something funny happen
-@architect help me build a castle
-@warden what threats should I watch for?
+TheOracle help me find diamonds
+TheArchitect how do I build a castle?
+TheExplorer what's nearby?
+follow me                    # All bots follow you
+protect me                   # Bots become bodyguards
+help                        # Show available commands
 ```
 
 ### API Endpoints
