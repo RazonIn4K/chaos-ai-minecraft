@@ -152,7 +152,7 @@
           "parameters": [
             {
               "name": "embeds",
-              "value": "=[{\"title\":\"🎭 AI DEBATE\",\"description\":\"**Topic:** {{ $node['Pick Random Topic'].json.topic }}\",\"fields\":[{\"name\":\"🔮 Oracle (Claude)\",\"value\":\"{{ $json.oracle?.substring(0,200) || 'No response' }}\"},{\"name\":\"🎭 Trickster (Grok)\",\"value\":\"{{ $json.trickster?.substring(0,200) || 'No response' }}\"},{\"name\":\"🏗️ Architect (GPT)\",\"value\":\"{{ $json.architect?.substring(0,200) || 'No response' }}\"},{\"name\":\"⚔️ Warden (Gemini)\",\"value\":\"{{ $json.warden?.substring(0,200) || 'No response' }}\"}],\"color\":9442302}]"
+              "value": "=[{\"title\":\"🎭 AI DEBATE\",\"description\":\"**Topic:** {{ $node['Pick Random Topic'].json.topic }}\",\"fields\":[{\"name\":\"🔮 Oracle (Claude)\",\"value\":\"{{ $json.oracle?.substring(0,200) || 'No response' }}\"},{\"name\":\"🏗️ Architect (GPT)\",\"value\":\"{{ $json.architect?.substring(0,200) || 'No response' }}\"},{\"name\":\"🧭 Explorer (Gemini)\",\"value\":\"{{ $json.explorer?.substring(0,200) || 'No response' }}\"}],\"color\":9442302}]"
             }
           ]
         },

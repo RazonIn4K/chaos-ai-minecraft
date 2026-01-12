@@ -149,9 +149,8 @@ async def chaos(interaction: discord.Interaction, event: str = None):
 )
 @app_commands.choices(character=[
     app_commands.Choice(name="🔮 The Oracle (Claude)", value="oracle"),
-    app_commands.Choice(name="🎭 The Trickster (Grok)", value="trickster"),
     app_commands.Choice(name="🏗️ The Architect (GPT)", value="architect"),
-    app_commands.Choice(name="⚔️ The Warden (Gemini)", value="warden"),
+    app_commands.Choice(name="🧭 The Explorer (Gemini)", value="explorer"),
 ])
 async def ask(interaction: discord.Interaction, character: str, question: str):
     """Ask AI character"""
@@ -165,16 +164,14 @@ async def ask(interaction: discord.Interaction, character: str, question: str):
     
     colors = {
         "oracle": discord.Color.purple(),
-        "trickster": discord.Color.gold(),
         "architect": discord.Color.teal(),
-        "warden": discord.Color.red()
+        "explorer": discord.Color.green()
     }
-    
+
     names = {
         "oracle": "🔮 The Oracle",
-        "trickster": "🎭 The Trickster",
         "architect": "🏗️ The Architect",
-        "warden": "⚔️ The Warden"
+        "explorer": "🧭 The Explorer"
     }
     
     embed = discord.Embed(
@@ -207,12 +204,11 @@ async def debate(interaction: discord.Interaction, topic: str):
     )
     
     for persona, response in result.items():
-        if persona in ["oracle", "trickster", "architect", "warden"]:
+        if persona in ["oracle", "architect", "explorer"]:
             names = {
                 "oracle": "🔮 Oracle (Claude)",
-                "trickster": "🎭 Trickster (Grok)", 
                 "architect": "🏗️ Architect (GPT)",
-                "warden": "⚔️ Warden (Gemini)"
+                "explorer": "🧭 Explorer (Gemini)"
             }
             embed.add_field(
                 name=names.get(persona, persona),

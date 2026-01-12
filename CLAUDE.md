@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Chaos AI Minecraft is a multi-AI integration system where four AI models (Claude, GPT-4, Grok, Gemini) exist as interactive characters in a Minecraft world. The system orchestrates AI personalities that interact with players, compete with each other, and trigger dynamic chaos events.
+Chaos AI Minecraft is a multi-AI integration system where three AI models (Claude, GPT, Gemini) exist as interactive characters in a Minecraft world. The system orchestrates AI personalities that interact with players, coordinate as a team, and trigger dynamic chaos events.
 
 ## Architecture
 
@@ -17,21 +17,23 @@ Chaos AI Minecraft is a multi-AI integration system where four AI models (Claude
 │  REDIS (State/Events, Port 6379)                           │
 │      ↕ AI API Calls                                         │
 │  AI BOTS (Mineflayer) ←→ External AI Services              │
-│  (Claude/GPT/Grok/Gemini as player bots)                   │
+│  (Claude/GPT/Gemini as player bots)                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **Key Components:**
 - `ai-controller/` - Python FastAPI service for AI orchestration and RCON commands
 - `ai-bots/` - Node.js Mineflayer bots that join as players (one per AI persona)
-- `server/` - Docker Compose configuration and Minecraft server setup
+  - `claude-bot/` - TheOracle (Claude 3.5 Haiku)
+  - `openai-bot/` - TheArchitect (GPT-4o-mini)
+  - `gemini-bot/` - TheExplorer (Gemini 2.5 Flash)
 - `discord-bot/` - Optional Discord integration
 
 ## Build and Run Commands
 
 ```bash
-# Start all services
-cd server && docker compose up -d
+# Start all services (from repo root)
+docker compose up -d
 
 # View Minecraft server logs
 docker logs -f minecraft-chaos
@@ -40,10 +42,10 @@ docker logs -f minecraft-chaos
 docker logs -f chaos-ai-controller
 
 # Restart all services
-cd server && docker compose restart
+docker compose restart
 
 # Stop all services
-cd server && docker compose down
+docker compose down
 
 # Add player to whitelist
 docker exec minecraft-chaos rcon-cli "whitelist add PlayerName"
@@ -72,14 +74,22 @@ curl -X POST "http://localhost:3000/ai/debate?topic=Diamonds%20or%20Netherite"
 
 ## AI Personas
 
-| Persona | Model | Role | Bot Trigger |
-|---------|-------|------|-------------|
-| The Oracle | Claude (Sonnet 4) | Wise guide, hints, quests | `@oracle` |
-| The Architect | GPT-4o | Building advice, construction | `@architect` |
-| The Trickster | Grok-Beta | Chaos, pranks, memes | `@trickster` |
-| The Warden | Gemini 1.5-Pro | Threat monitoring, balance | `@warden` |
+| Persona | Model | Role | In-Game Name |
+|---------|-------|------|--------------|
+| The Oracle | Claude 3.5 Haiku | Team leader, wise guide | TheOracle |
+| The Architect | GPT-4o-mini | Building expert, construction | TheArchitect |
+| The Explorer | Gemini 2.5 Flash | Scout, navigation, threats | TheExplorer |
 
 **Important constraint:** AI responses are limited to 100 characters for Minecraft chat.
+
+## In-Game Bot Commands
+
+Players can interact with bots via chat:
+- `TheOracle help me find diamonds` - Ask for guidance
+- `TheArchitect how do I build a castle?` - Get building advice
+- `TheExplorer what's nearby?` - Scout the area
+- `follow me` - All bots follow you
+- `protect me` - Bots become bodyguards
 
 ## Adding Chaos Events
 
@@ -98,13 +108,13 @@ Edit `ai-controller/events.py` and add to the `CHAOS_EVENTS` list:
 ## Adding AI Personas
 
 1. Edit `ai-controller/personas.py` - add to `AI_PERSONAS` dict
-2. Create bot in `ai-bots/` directory following `claude-bot/` structure
+2. Create bot in `ai-bots/` directory following existing structure
 3. Extend `ai-bots/shared/base-bot.js` for shared functionality
 
 ## Environment Setup
 
 Copy `.env.example` to `.env` and configure:
-- API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `XAI_API_KEY`, `GOOGLE_API_KEY`
+- API keys: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`
 - RCON password: `RCON_PASSWORD` (change from default)
 - Chaos timing: `CHAOS_INTERVAL_MIN`, `CHAOS_INTERVAL_MAX` (hours between events)
 
@@ -113,3 +123,10 @@ Copy `.env.example` to `.env` and configure:
 - **Python (ai-controller/)**: PEP 8, type hints, async/await patterns
 - **JavaScript (ai-bots/)**: ESLint, async/await, JSDoc for complex functions
 - **Docker**: Multi-stage builds, non-root users where possible
+
+## Cost-Effective Models
+
+All bots use budget-friendly API tiers:
+- Claude 3.5 Haiku (~$0.80/M input, $4/M output)
+- GPT-4o-mini (~$0.15/M input, $0.60/M output)
+- Gemini 2.5 Flash (free tier available)

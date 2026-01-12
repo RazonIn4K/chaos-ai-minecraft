@@ -52,7 +52,7 @@ See `.env.example` for the full list. The important groups are:
 
 - Minecraft server settings (version, name, MOTD, difficulty, memory).
 - RCON credentials (required for the AI controller).
-- AI API keys (Anthropic, OpenAI, XAI, Google).
+- AI API keys (Anthropic, OpenAI, Google).
 - Discord bot credentials (token, guild, channel IDs).
 - Feature flags (enable chaos events, debates, bots, quests).
 

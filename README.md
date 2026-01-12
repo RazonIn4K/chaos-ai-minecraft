@@ -64,7 +64,7 @@ Random events trigger every 2-4 hours:
 ### Prerequisites
 
 - [Docker](https://www.docker.com/) & Docker Compose
-- API Keys: Anthropic (Claude), OpenAI, X.AI (Grok), Google (Gemini)
+- API Keys: Anthropic (Claude), OpenAI, Google (Gemini)
 - A server (DigitalOcean, AWS, or local machine)
 
 ### Installation
@@ -197,7 +197,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 - [itzg/minecraft-server](https://github.com/itzg/docker-minecraft-server) - Docker image
 - [Mineflayer](https://github.com/PrismarineJS/mineflayer) - Bot framework
 - [PaperMC](https://papermc.io/) / [Fabric](https://fabricmc.net/) - Server software
-- Anthropic, OpenAI, X.AI, Google - AI APIs
+- Anthropic, OpenAI, Google - AI APIs
 
 ---
 

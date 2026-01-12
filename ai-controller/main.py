@@ -191,7 +191,7 @@ async def ai_debate(topic: str = Query(..., description="Topic for the AIs to de
     mc_title("§d§l🎭 AI DEBATE 🎭", f"§7Topic: {topic[:50]}")
     await asyncio.sleep(2)
     
-    for persona in ["oracle", "trickster", "architect", "warden"]:
+    for persona in ["oracle", "architect", "explorer"]:
         prompt = f"Give your brief opinion on this Minecraft debate topic: {topic}"
         response = await get_ai_response(persona, prompt, "Debate")
         responses[persona] = response

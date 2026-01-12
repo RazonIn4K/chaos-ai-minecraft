@@ -86,8 +86,8 @@ mkdir -p ${INSTALL_DIR}/server/{data,mods,config,backups}
 mkdir -p ${INSTALL_DIR}/logs
 
 # Copy files if running from repo
-if [ -f "../server/docker-compose.yml" ]; then
-    cp -r ../server/* ${INSTALL_DIR}/server/
+if [ -f "../docker-compose.yml" ]; then
+    cp ../docker-compose.yml ${INSTALL_DIR}/server/
     cp -r ../ai-controller ${INSTALL_DIR}/
     cp -r ../ai-bots ${INSTALL_DIR}/
     cp -r ../discord-bot ${INSTALL_DIR}/

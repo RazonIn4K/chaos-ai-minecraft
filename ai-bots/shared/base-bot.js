@@ -20,7 +20,7 @@ class AIBot {
      * @param {string} options.name - Bot username
      * @param {string} options.host - Server host
      * @param {number} options.port - Server port
-     * @param {string} options.aiProvider - AI provider (claude, gpt, grok, gemini)
+     * @param {string} options.aiProvider - AI provider (claude, gpt, gemini)
      * @param {string} options.personality - Bot personality description
      */
     constructor(options) {
