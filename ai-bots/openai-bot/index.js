@@ -51,11 +51,11 @@ class ChattyArchitectBot extends AIBot {
         this.goalManager = new GoalManager(this.bot, this.actionExecutor);
 
         setTimeout(() => {
-            this.say("Architect here! Following AlikeRazon to adventure!");
+            this.say("Architect here! Following " + (process.env.PRIMARY_PLAYER || 'AlikeRazon') + " to adventure!");
             this.autoEquipGear();
-            // Auto-follow AlikeRazon
-            this.followingPlayer = 'AlikeRazon';
-            this.actionExecutor.executeAction('follow', { target: 'AlikeRazon' });
+            // Auto-follow Primary Player
+            this.followingPlayer = process.env.PRIMARY_PLAYER || 'AlikeRazon';
+            this.actionExecutor.executeAction('follow', { target: this.followingPlayer });
         }, 3000);
 
         this.setupSurvivalSystems();

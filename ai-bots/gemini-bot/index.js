@@ -65,11 +65,11 @@ class ChattyExplorerBot extends AIBot {
         this.goalManager = new GoalManager(this.bot, this.actionExecutor);
 
         setTimeout(() => {
-            this.say("Explorer ready! Following AlikeRazon - let's go!");
+            this.say("Explorer ready! Following " + (process.env.PRIMARY_PLAYER || 'AlikeRazon') + " - let's go!");
             this.autoEquipGear();
-            // Auto-follow AlikeRazon
-            this.followingPlayer = 'AlikeRazon';
-            this.actionExecutor.executeAction('follow', { target: 'AlikeRazon' });
+            // Auto-follow Primary Player
+            this.followingPlayer = process.env.PRIMARY_PLAYER || 'AlikeRazon';
+            this.actionExecutor.executeAction('follow', { target: this.followingPlayer });
         }, 4000);
 
         this.setupSurvivalSystems();
