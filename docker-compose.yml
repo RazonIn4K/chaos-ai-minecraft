@@ -21,16 +21,16 @@ services:
     tty: true
     stdin_open: true
     ports:
-      - "25565:25565"      # Minecraft Java
-      - "19132:19132/udp"  # Bedrock (via Geyser)
-      - "25575:25575"      # RCON
-      - "8100:8100"        # BlueMap
+      - "25565:25565" # Minecraft Java
+      - "19132:19132/udp" # Bedrock (via Geyser)
+      - "25575:25575" # RCON
+      - "8100:8100" # BlueMap
     environment:
       # Server Type
       EULA: "TRUE"
       TYPE: "FABRIC"
       VERSION: ${MINECRAFT_VERSION:-1.21.1}
-      
+
       # Performance (adjust MEMORY in .env based on your server)
       MEMORY: ${MEMORY:-6G}
       JVM_XX_OPTS: >-
@@ -50,7 +50,7 @@ services:
         -XX:SurvivorRatio=32
         -XX:+PerfDisableSharedMem
         -XX:MaxTenuringThreshold=1
-      
+
       # Server Identity
       SERVER_NAME: ${SERVER_NAME:-ChaosAI}
       MOTD: ${MOTD:-§c§lCHAOS AI SERVER §r§7- §6Where AIs Come to Play}
@@ -59,26 +59,26 @@ services:
       HARDCORE: "false"
       PVP: "true"
       MAX_PLAYERS: ${MAX_PLAYERS:-20}
-      
+
       # World Settings
       VIEW_DISTANCE: ${VIEW_DISTANCE:-16}
       SIMULATION_DISTANCE: 10
       SPAWN_PROTECTION: 0
       ALLOW_FLIGHT: "true"
-      
+
       # Security
       ONLINE_MODE: "TRUE"
       ENABLE_WHITELIST: "TRUE"
       ENFORCE_WHITELIST: "TRUE"
-      
+
       # RCON for AI control
       ENABLE_RCON: "TRUE"
       RCON_PASSWORD: ${RCON_PASSWORD}
       RCON_PORT: 25575
-      
+
       # Mod support
       MODRINTH_DOWNLOAD_DEPENDENCIES: "required"
-      
+
     volumes:
       - minecraft-data:/data
       - ./mods:/mods:ro
@@ -152,6 +152,37 @@ services:
       retries: 3
 
   # ===========================================================================
+  # AI BOTS - Mineflayer agents
+  # ===========================================================================
+  ai-bots:
+    image: node:20-alpine
+    container_name: chaos-ai-bots
+    restart: unless-stopped
+    working_dir: /app/shared
+    command: sh -c "npm install && npm run all"
+    environment:
+      - SERVER_HOST=minecraft
+      - SERVER_PORT=25565
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ORACLE_BOT_NAME=${ORACLE_BOT_NAME:-TheOracle}
+      - ARCHITECT_BOT_NAME=${ARCHITECT_BOT_NAME:-TheArchitect}
+      - EXPLORER_BOT_NAME=${EXPLORER_BOT_NAME:-TheExplorer}
+      - PRIMARY_PLAYER=${PRIMARY_PLAYER:-AlikeRazon}
+    volumes:
+      - ./ai-bots:/app
+    depends_on:
+      minecraft:
+        condition: service_healthy
+      ai-controller:
+        condition: service_started
+    networks:
+      - chaos-net
+    profiles:
+      - bots
+
+  # ===========================================================================
   # DISCORD BOT (Optional)
   # ===========================================================================
   discord-bot:
@@ -170,7 +201,7 @@ services:
     networks:
       - chaos-net
     profiles:
-      - discord  # Only starts with: docker compose --profile discord up
+      - discord # Only starts with: docker compose --profile discord up
 
 # =============================================================================
 # NETWORKS

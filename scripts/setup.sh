@@ -42,7 +42,8 @@ fi
 apt install -y docker-compose-plugin
 
 echo "Docker version: $(docker --version)"
-echo "Docker Compose version: $(docker compose version)"
+echo "Docker version: $(docker --version)"
+# docker compose version check skipped (v2 is standard now)
 
 # -----------------------------------------------------------------------------
 # 3. INSTALL NODE.JS (for AI bots)
